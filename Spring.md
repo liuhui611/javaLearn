@@ -42,6 +42,17 @@ SpringIOC和AOP官方文档<https://docs.spring.io/spring-framework/docs/current
 
 
 
+常用依赖
+
+```xml
+<dependency>
+   <groupId>junit</groupId>
+   <artifactId>junit</artifactId>
+   <version>4.12</version>
+   <scope>test</scope>
+</dependency>
+```
+
 
 
 ## 1.2、优点
@@ -868,6 +879,114 @@ xmlns:c="http://www.springframework.org/schema/c"
 
 ## 6.4、使用注解自动装配
 
+jdk1.5支持的注解，Spring2.5就支持注解了！
+
+The introduction of annotation-based configuration raised the question of whether this approach is “better” than XML. 
+
+要使用注解须知：
+
+1. 导入约束 。context约束
+2. ==配置注解的支持：<context:annotation-config/>==
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        https://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:annotation-config/>
+
+</beans>
+```
+
+
+
+
+
+注解是通过反射来实现的，所以可以不用set方法。但是用xml的bean配置就必须有set方法。
+
+@Autowired
+
+直接在属性上即可！也可以在set方法上使用！
+
+使用Autowired我们可以不用编写set方法了 ，前提是你这个自动装配的属性在IOC（Spring）容器中存在，并且符合名字byname！
+
+科普：
+
+```java
+@Nullable 字段标记了这个注解，说明这个字段可以为null;
+```
+
+
+
+```java
+public @interface Autowired {
+    boolean required() default true;
+}
+```
+
+
+
+测试代码
+
+```java
+public class People {
+    //如果显示定义了Autowired的required属性为false，说明这个对象可以为null，否则不能为空（一般很少用的到）
+    @Autowired(required = false)
+    private Cat cat;
+    @Autowired
+    private Dog dog;
+    private String name;
+}
+```
+
+
+
+如果@Autowired自动装配的环境比较复杂，自动装配无法通过一个注解【@Autowired】完成的时候，我们可以使用@Qualifier（value="xxx"）去配合@Autowired的使用，指定一个唯一的bean对象注入！
+
+```java
+public class People {
+    @Autowired
+   	@Qualifier(value="cat11")
+    private Cat cat;
+    @Autowired
+    @Qualifier(value="dog11")
+    private Dog dog;
+    private String name;
+}
+```
+
+
+
+
+
+==@Resource注解==
+
+```java
+public class People {
+  
+  	@Resource(name="cat2")
+    private Cat cat;
+    @Resource
+    private Dog dog;
+  
+}
+```
+
+
+
+小结：
+
+@Resource和@Autowired的区别：
+
+* 都是用来自动装配的，都可以放在属性字段上
+* @Autowired通过byType的方式实现，而且必须要求这个对象存在！【常用】
+* @Resource默认通过byname的方式实现，如果找不到名字，则通过byType实现，如果两个都找不到的情况下，就报错!【常用】
+* 执行顺序不同：@Autowired通过byType的方式实现；@Resource默认通过byname的方式实现，如果找不到名字，则通过byType实现，
 
 
 
@@ -878,13 +997,396 @@ xmlns:c="http://www.springframework.org/schema/c"
 
 
 
-# 7
+
+
+
+# 7、使用注解开发
+
+在spring4之后，要使用注解开发，必须保证aop的包导入了。
+
+![image-20200811141016224](Spring.assets/image-20200811141016224.png)
+
+
+
+使用注解需要导入context约束，增加注解的支持
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        https://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!--指定要扫描的包，这个包下的注解就会生效 -->
+    <context:component-scan base-package="pojo"/>
+    <context:annotation-config/>
+
+</beans>
+```
+
+
+
+## 7.1、Bean
+
+
+
+## 7.2、属性如何注入
+
+```java
+package pojo;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+//等价于<bean id="user" class="pojo.User"/>
+//@Component组件
+
+@Component
+public class User {
+
+    @Value("liuhui")//相当于<property name="name" value="liuhui"/>
+    public String name;
+    public int age;
+
+    @Value("12")
+    public void setAge(int age) {
+        this.age = age;
+    }
+}
+
+```
+
+
+
+## 7.3、衍生的注解
+
+@Component有几个衍生注解，我们在web开发中，会按照mvc三层架构分层 
+
+* dao【@Repository】
+* service【@service】
+* controller【@Controller】
+
+这四个注解功能都是一样的，都是代表将某个类注册到Spring中，装配Bean
+
+
+
+## 7.4、自动装配置
+
+* @Autowired：自动装配通过类型，名字，如果Autowired不能唯一自动装配上属性，则需要通过@Qualifier(value="xxx")
+* @Nullable 字段标记了这个注解，说明这个字段可以为null
+* @Resource：自动装配通过名字，类型；
+* @Component：==组件，放在类上，说明这个类被spring管理了 ，就是bean！==
+
+## 7.5、作用域
+
+```java
+@Component
+@Scope("prototype")
+public class User {
+
+    @Value("liuhui")//相当于<property name="name" value="liuhui"/>
+    public String name;
+    public int age;
+
+    @Value("12")
+    public void setAge(int age) {
+        this.age = age;
+    }
+    
+}
+```
+
+
+
+## 7.6、小结
+
+xml与注解：
+
+* xml更加万能，适用于任何场合！维护简单方便
+* 注解不是自己的类，使用不了，维护相对复杂
+
+xml与注解最佳实践：
+
+* xml用来管理bean
+* 注解只负责完成属性的注入。
+* 我们在使用的过程中，只需要注意一个问题：必须让注解生效，就需要开启注解的支持。
+
+```xml
+ <!--指定要扫描的包，这个包下的注解就会生效 -->
+ <context:component-scan base-package="pojo"/>
+ <context:annotation-config/>
+
+```
 
 
 
 
 
-# 8
+
+
+# 8、使用java的方式配置Spring
+
+我们现在要完全不使用Spring的xml配置了，全权交给java来做
+
+javaConfig是spring的一个子项目，在spring4之后，它成为了一个核心功能
+
+![image-20200811174931350](Spring.assets/image-20200811174931350.png)
+
+
+
+实体类
+
+```java
+package pojo;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+//这里这个注解的意思，就是说明这个类被spring接管了，就是注册到了容器中
+@Component
+public class User {
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+    @Value("liuhui")
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "name='" + name + '\'' +
+                '}';
+    }
+}
+
+```
+
+
+
+配置文件
+
+```java
+package config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import pojo.User;
+
+//这个也会被spring容器托管，就是注册到容器中，因为它本来就是一个组件。
+@Configuration //代表这是一个配置类，就和之前的beans.xml
+@ComponentScan("pojo")
+@Import(LiuConfig2.class)//配置文件的导入
+public class LiuConfig {
+
+    //注册一个bean就相当于我们之前写的一个bean标签
+    //这个方法的名字，就相当于bean标签中的id属性
+    //这个方法的返回值，就相当于bean标签中的class属性
+    @Bean
+    public User getUser(){
+        
+        return new User();//就是返回要注入夫人bean对象！
+    }
+}
+```
+
+
+
+测试类
+
+```java 
+package pojo;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+//这里这个注解的意思，就是说明这个类被spring接管了，就是注册到了容器中
+@Component
+public class User {
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+    @Value("liuhui")
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "name='" + name + '\'' +
+                '}';
+    }
+}
+
+```
+
+
+
+这种纯java的配置方式，在springboot中随处可见！
+
+# 9、代理模式
+
+为什么要学习代理模式？因为这就是SpringAOP的底层！【SpringAOP和SpringMVC】
+
+代理模式的分类：
+
+* 静态代理
+* 动态代理
+
+
+
+![image-20200812101517343](Spring.assets/image-20200812101517343.png)
+
+
+
+## 9.1、静态代理
+
+角色分析：
+
+* 抽象角色：一般会使用接口或抽象类来解决
+* 真实角色：被代理的角色
+* 代理角色：代理真实角色，代理真实角色后，我们一般会做一些附属操作
+* 客户：访问代理对象的人！
+
+
+
+代码步骤：
+
+1. 接口
+
+   ```java
+   public interface Rent {
+       public void rent();
+   }
+   ```
+
+   
+
+2. 真实角色
+
+   ```java
+   public class Host implements Rent{
+   
+       public void rent() {
+           System.out.println("房东要出租房屋");
+       }
+   }
+   
+   ```
+
+   
+
+3. 代理角色
+
+   ```java
+   public class Proxy {
+       private Host host;
+       public Proxy(){
+       }
+       public Proxy(Host host){
+           this.host = host;
+       }
+       public void rent(){
+           host.rent();
+           seeHouse();
+           hetong();
+           fare();
+       }
+   
+       //看房
+       public void seeHouse(){
+           System.out.println("中介带你看房！");
+       }
+       //合同
+       public void hetong(){
+           System.out.println("签合同");
+       }
+       //收中介费
+       public void fare(){
+           System.out.println("收中介费");
+       }
+   }
+   
+   ```
+
+   
+
+4. 客户端访问角色
+
+   ```java
+   public class Client {
+       public static void main(String[] args) {
+           Host host = new Host();
+   //        host.rent();
+           //代理一般会有附属操作
+           Proxy proxy = new Proxy(host);
+           proxy.rent();
+       }
+   }
+   ```
+
+   
+
+
+
+代理模式的好处：
+
+* 可以以使真实角色的操作更加纯粹！不用去关注一些公共的业务
+* 公共也就交给代理角色！实现了业务的分工！
+* 公共业务发生扩展的时候，方便集中管理！
+
+缺点：
+
+* 一个真实角色就会产生一个代理角色；代码量会翻倍，开发效率会变低
+
+
+
+
+
+## 9.2、加深理解
+
+代码对应spring-08-proxy demo02
+
+
+
+聊聊AOP：
+
+
+
+![image-20200814094352872](Spring.assets/image-20200814094352872.png)
+
+
+
+## 9、3动态代理
+
+
+
+![image-20200817095445541](Spring.assets/image-20200817095445541.png)
+
+
+
+
+
+
+
+
+
+# 10
+
+# 11
+
+
 
 
 
